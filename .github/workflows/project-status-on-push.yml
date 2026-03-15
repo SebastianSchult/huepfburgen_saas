@@ -1,0 +1,128 @@
+name: Project Status On Push
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  issues: write
+  repository-projects: write
+
+jobs:
+  move-ticket-to-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move linked issue to Review
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN != '' && secrets.PROJECT_AUTOMATION_TOKEN || github.token }}
+          script: |
+            const projectId = "PVT_kwHOCUUiJM4BRvo_";
+            const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
+            const reviewOptionId = "f769e6a8";
+
+            const branch = context.ref.replace("refs/heads/", "");
+            const match = branch.match(/^(\d+)-/);
+
+            if (!match) {
+              core.info(`Branch '${branch}' does not start with an issue number. Skipping.`);
+              return;
+            }
+
+            const issueNumber = Number(match[1]);
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const issueData = await github.graphql(
+              `
+              query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $issueNumber) {
+                    id
+                    number
+                    title
+                  }
+                }
+              }
+              `,
+              { owner, repo, issueNumber }
+            );
+
+            const issue = issueData.repository?.issue;
+            if (!issue) {
+              core.info(`No issue #${issueNumber} found in ${owner}/${repo}. Skipping.`);
+              return;
+            }
+
+            let hasNextPage = true;
+            let cursor = null;
+            let itemId = null;
+
+            while (hasNextPage && !itemId) {
+              const projectData = await github.graphql(
+                `
+                query($projectId: ID!, $cursor: String) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      items(first: 100, after: $cursor) {
+                        pageInfo {
+                          hasNextPage
+                          endCursor
+                        }
+                        nodes {
+                          id
+                          content {
+                            ... on Issue {
+                              id
+                              number
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                `,
+                { projectId, cursor }
+              );
+
+              const items = projectData.node?.items?.nodes ?? [];
+              const matchItem = items.find((item) => item.content?.id === issue.id);
+              if (matchItem) {
+                itemId = matchItem.id;
+                break;
+              }
+
+              hasNextPage = projectData.node?.items?.pageInfo?.hasNextPage ?? false;
+              cursor = projectData.node?.items?.pageInfo?.endCursor ?? null;
+            }
+
+            if (!itemId) {
+              core.info(`Issue #${issueNumber} is not in the project yet. Skipping.`);
+              return;
+            }
+
+            await github.graphql(
+              `
+              mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $statusFieldId
+                    value: { singleSelectOptionId: $reviewOptionId }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+              `,
+              { projectId, itemId, statusFieldId, reviewOptionId }
+            );
+
+            core.info(`Moved issue #${issueNumber} to Review.`);
