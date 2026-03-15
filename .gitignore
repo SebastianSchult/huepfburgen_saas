@@ -30,3 +30,6 @@ apps/backend/prisma/migrations/
 # Local data
 postgres-data/
 redis-data/
+
+# Private planning docs (kept local only)
+architecture/
