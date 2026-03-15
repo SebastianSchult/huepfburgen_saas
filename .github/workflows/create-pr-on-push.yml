@@ -127,7 +127,7 @@ jobs:
                 `- Deletions: ${deletions}`,
                 "",
                 "## Linked Issue",
-                `Closes #${issueNumber}`
+                `Related to #${issueNumber}`
               ];
               const prBody = prBodyLines.join("\n");
 
