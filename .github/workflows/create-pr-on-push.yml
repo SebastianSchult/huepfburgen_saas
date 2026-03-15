@@ -1,4 +1,4 @@
-name: Auto Create PR On Push
+name: Auto Create Or Update PR On Push
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
 
-      - name: Create PR for ticket branch
+      - name: Create or update PR for ticket branch
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
@@ -54,11 +54,6 @@ jobs:
                 per_page: 1
               });
 
-              if (existing.data.length > 0) {
-                core.info(`PR already exists: ${existing.data[0].html_url}`);
-                return;
-              }
-
               let prTitle = branch;
               let issueTitle = "";
 
@@ -74,17 +69,79 @@ jobs:
                 core.warning(`Could not load issue #${issueNumber}. Using fallback PR title.`);
               }
 
+              let commits = [];
+              let files = [];
+              try {
+                const compare = await github.rest.repos.compareCommitsWithBasehead({
+                  owner,
+                  repo,
+                  basehead: `${baseBranch}...${branch}`
+                });
+                commits = compare.data.commits ?? [];
+                files = compare.data.files ?? [];
+              } catch (error) {
+                core.warning("Could not build commit/file summary from compare API.");
+              }
+
+              const additions = files.reduce((sum, file) => sum + (file.additions ?? 0), 0);
+              const deletions = files.reduce((sum, file) => sum + (file.deletions ?? 0), 0);
+
+              const commitLines =
+                commits.length > 0
+                  ? commits.slice(0, 20).map((commit) => {
+                      const title = commit.commit.message.split("\n")[0];
+                      return `- ${title} (\`${commit.sha.slice(0, 7)}\`)`;
+                    })
+                  : ["- No commit summary available yet."];
+
+              if (commits.length > 20) {
+                commitLines.push(`- ...and ${commits.length - 20} more commits.`);
+              }
+
+              const fileLines =
+                files.length > 0
+                  ? files.slice(0, 40).map((file) => {
+                      return `- \`${file.filename}\` (${file.status}, +${file.additions ?? 0}/-${file.deletions ?? 0})`;
+                    })
+                  : ["- No file change summary available yet."];
+
+              if (files.length > 40) {
+                fileLines.push(`- ...and ${files.length - 40} more files.`);
+              }
+
               const prBodyLines = [
                 "## Summary",
-                "- Automated PR creation from ticket branch push.",
+                "- Automated PR create/update from ticket branch push.",
                 "- Base branch: `develop`.",
+                issueTitle ? `- Issue title: ${issueTitle}` : "- Issue title: n/a",
+                "",
+                "## What Was Done",
+                ...commitLines,
+                "",
+                "## Changed Files",
+                ...fileLines,
+                "",
+                "## Change Stats",
+                `- Files changed: ${files.length}`,
+                `- Additions: ${additions}`,
+                `- Deletions: ${deletions}`,
                 "",
                 "## Linked Issue",
-                `Closes #${issueNumber}`
+                `Related to #${issueNumber}`
               ];
+              const prBody = prBodyLines.join("\n");
 
-              if (issueTitle) {
-                prBodyLines.splice(1, 0, `- Issue title: ${issueTitle}`);
+              if (existing.data.length > 0) {
+                const pull = existing.data[0];
+                await github.rest.pulls.update({
+                  owner,
+                  repo,
+                  pull_number: pull.number,
+                  title: prTitle,
+                  body: prBody
+                });
+                core.info(`PR already exists and was updated: ${pull.html_url}`);
+                return;
               }
 
               const created = await github.rest.pulls.create({
@@ -93,7 +150,7 @@ jobs:
                 title: prTitle,
                 head: branch,
                 base: baseBranch,
-                body: prBodyLines.join("\n")
+                body: prBody
               });
 
               core.info(`Created PR: ${created.data.html_url}`);

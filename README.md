@@ -19,6 +19,13 @@ Multi-tenant rental SaaS starter.
 - `packages/eslint-config` - shared lint presets
 - `packages/tsconfig` - shared TypeScript base config
 
+## ORM standard
+
+The backend ORM standard is **Prisma**.
+
+- Schema source: `apps/backend/prisma/schema.prisma`
+- Local ORM guide: `apps/backend/prisma/README.md`
+
 ## Quick start
 
 1. Install dependencies:
@@ -49,6 +56,8 @@ Default local PostgreSQL credentials from `docker-compose.yml`:
 4. Initialize Prisma:
 
 ```bash
+npm run prisma:validate -w @huepf/backend
+npm run prisma:format -w @huepf/backend
 npm run prisma:generate -w @huepf/backend
 npm run prisma:migrate:dev -w @huepf/backend
 ```

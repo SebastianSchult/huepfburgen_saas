@@ -107,9 +107,9 @@ model User {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  tenant             Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBookings    Booking[]        @relation("created_by_user")
-  supportSessions    SupportSession[] @relation("target_user")
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBookings Booking[]        @relation("created_by_user")
+  supportSessions SupportSession[] @relation("target_user")
 
   @@index([tenantId])
   @@map("users")
@@ -165,9 +165,9 @@ model Equipment {
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
-  tenant         Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category       EquipmentCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  location       Location?                @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category       EquipmentCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  location       Location?                 @relation(fields: [locationId], references: [id], onDelete: SetNull)
   bookingItems   BookingItem[]
   unavailability EquipmentUnavailability[]
 
@@ -218,9 +218,9 @@ model Booking {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer      Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  createdByUser User?        @relation("created_by_user", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdByUser User?         @relation("created_by_user", fields: [createdByUserId], references: [id], onDelete: SetNull)
   bookingItems  BookingItem[]
 
   @@unique([tenantId, bookingNumber])
@@ -231,15 +231,15 @@ model Booking {
 }
 
 model BookingItem {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @map("tenant_id") @db.Uuid
-  bookingId  String   @map("booking_id") @db.Uuid
-  equipmentId String  @map("equipment_id") @db.Uuid
-  quantity   Int      @default(1)
-  unitPrice  Decimal  @default(0) @map("unit_price") @db.Decimal(10, 2)
-  lineTotal  Decimal  @default(0) @map("line_total") @db.Decimal(10, 2)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  bookingId   String   @map("booking_id") @db.Uuid
+  equipmentId String   @map("equipment_id") @db.Uuid
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(10, 2)
+  lineTotal   Decimal  @default(0) @map("line_total") @db.Decimal(10, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
