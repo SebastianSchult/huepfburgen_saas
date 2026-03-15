@@ -15,114 +15,145 @@ jobs:
   move-ticket-to-review:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate project automation token
+        if: ${{ secrets.PROJECT_AUTOMATION_TOKEN == '' }}
+        run: |
+          echo "::error::Missing secret PROJECT_AUTOMATION_TOKEN."
+          echo "::error::Create a Personal Access Token with project access and add it as repository secret PROJECT_AUTOMATION_TOKEN."
+          exit 1
+
       - name: Move linked issue to Review
+        if: ${{ secrets.PROJECT_AUTOMATION_TOKEN != '' }}
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN != '' && secrets.PROJECT_AUTOMATION_TOKEN || github.token }}
+          github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
           script: |
-            const projectId = "PVT_kwHOCUUiJM4BRvo_";
-            const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
-            const reviewOptionId = "f769e6a8";
+            try {
+              const projectId = "PVT_kwHOCUUiJM4BRvo_";
+              const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
+              const reviewOptionId = "f769e6a8";
 
-            const branch = context.ref.replace("refs/heads/", "");
-            const match = branch.match(/^(\d+)-/);
+              const branch = context.ref.replace("refs/heads/", "");
+              const match = branch.match(/^(\d+)-/);
 
-            if (!match) {
-              core.info(`Branch '${branch}' does not start with an issue number. Skipping.`);
-              return;
-            }
+              if (!match) {
+                core.info(`Branch '${branch}' does not start with an issue number. Skipping.`);
+                return;
+              }
 
-            const issueNumber = Number(match[1]);
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+              const issueNumber = Number(match[1]);
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
 
-            const issueData = await github.graphql(
-              `
-              query($owner: String!, $repo: String!, $issueNumber: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  issue(number: $issueNumber) {
-                    id
-                    number
-                    title
+              const issueData = await github.graphql(
+                `
+                query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $issueNumber) {
+                      id
+                      number
+                      title
+                    }
                   }
                 }
+                `,
+                { owner, repo, issueNumber }
+              );
+
+              const issue = issueData.repository?.issue;
+              if (!issue) {
+                core.info(`No issue #${issueNumber} found in ${owner}/${repo}. Skipping.`);
+                return;
               }
-              `,
-              { owner, repo, issueNumber }
-            );
 
-            const issue = issueData.repository?.issue;
-            if (!issue) {
-              core.info(`No issue #${issueNumber} found in ${owner}/${repo}. Skipping.`);
-              return;
-            }
+              let hasNextPage = true;
+              let cursor = null;
+              let itemId = null;
 
-            let hasNextPage = true;
-            let cursor = null;
-            let itemId = null;
-
-            while (hasNextPage && !itemId) {
-              const projectData = await github.graphql(
-                `
-                query($projectId: ID!, $cursor: String) {
-                  node(id: $projectId) {
-                    ... on ProjectV2 {
-                      items(first: 100, after: $cursor) {
-                        pageInfo {
-                          hasNextPage
-                          endCursor
-                        }
-                        nodes {
-                          id
-                          content {
-                            ... on Issue {
-                              id
-                              number
+              while (hasNextPage && !itemId) {
+                const projectData = await github.graphql(
+                  `
+                  query($projectId: ID!, $cursor: String) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        items(first: 100, after: $cursor) {
+                          pageInfo {
+                            hasNextPage
+                            endCursor
+                          }
+                          nodes {
+                            id
+                            content {
+                              ... on Issue {
+                                id
+                                number
+                              }
                             }
                           }
                         }
                       }
                     }
                   }
+                  `,
+                  { projectId, cursor }
+                );
+
+                const items = projectData.node?.items?.nodes ?? [];
+                const matchItem = items.find((item) => item.content?.id === issue.id);
+                if (matchItem) {
+                  itemId = matchItem.id;
+                  break;
+                }
+
+                hasNextPage = projectData.node?.items?.pageInfo?.hasNextPage ?? false;
+                cursor = projectData.node?.items?.pageInfo?.endCursor ?? null;
+              }
+
+              if (!itemId) {
+                const addData = await github.graphql(
+                  `
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                  `,
+                  { projectId, contentId: issue.id }
+                );
+                itemId = addData.addProjectV2ItemById.item.id;
+                core.info(`Added issue #${issueNumber} to project.`);
+              }
+
+              await github.graphql(
+                `
+                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $statusFieldId
+                      value: { singleSelectOptionId: $reviewOptionId }
+                    }
+                  ) {
+                    projectV2Item {
+                      id
+                    }
+                  }
                 }
                 `,
-                { projectId, cursor }
+                { projectId, itemId, statusFieldId, reviewOptionId }
               );
 
-              const items = projectData.node?.items?.nodes ?? [];
-              const matchItem = items.find((item) => item.content?.id === issue.id);
-              if (matchItem) {
-                itemId = matchItem.id;
-                break;
+              core.info(`Moved issue #${issueNumber} to Review.`);
+            } catch (error) {
+              const message = error?.message ?? String(error);
+              if (message.includes("Resource not accessible by integration")) {
+                core.setFailed(
+                  "PROJECT_AUTOMATION_TOKEN has insufficient access to the project. Use a token with project scope and repository access."
+                );
+                return;
               }
-
-              hasNextPage = projectData.node?.items?.pageInfo?.hasNextPage ?? false;
-              cursor = projectData.node?.items?.pageInfo?.endCursor ?? null;
+              core.setFailed(`Project automation failed: ${message}`);
             }
-
-            if (!itemId) {
-              core.info(`Issue #${issueNumber} is not in the project yet. Skipping.`);
-              return;
-            }
-
-            await github.graphql(
-              `
-              mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
-                updateProjectV2ItemFieldValue(
-                  input: {
-                    projectId: $projectId
-                    itemId: $itemId
-                    fieldId: $statusFieldId
-                    value: { singleSelectOptionId: $reviewOptionId }
-                  }
-                ) {
-                  projectV2Item {
-                    id
-                  }
-                }
-              }
-              `,
-              { projectId, itemId, statusFieldId, reviewOptionId }
-            );
-
-            core.info(`Moved issue #${issueNumber} to Review.`);
