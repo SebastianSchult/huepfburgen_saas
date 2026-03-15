@@ -1,6 +1,6 @@
 # Huepfburgen SaaS
 
-Multi-tenant rental SaaS starter based on the architecture docs in `architecture/docs/`.
+Multi-tenant rental SaaS starter.
 
 ## Stack
 
@@ -18,7 +18,6 @@ Multi-tenant rental SaaS starter based on the architecture docs in `architecture
 - `packages/shared-types` - shared contracts and enums
 - `packages/eslint-config` - shared lint presets
 - `packages/tsconfig` - shared TypeScript base config
-- `architecture/docs` - source architecture and planning documents
 
 ## Quick start
 
@@ -31,8 +30,16 @@ npm install
 2. Start infrastructure:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
+
+Default local PostgreSQL credentials from `docker-compose.yml`:
+
+- host: `localhost`
+- port: `5432`
+- database: `huepfburgen_saas`
+- user: `postgres`
+- password: `postgres`
 
 3. Configure environment files:
 
@@ -46,11 +53,34 @@ npm run prisma:generate -w @huepf/backend
 npm run prisma:migrate:dev -w @huepf/backend
 ```
 
-5. Start all services:
+5. Verify backend database connectivity:
+
+```bash
+npm run db:check -w @huepf/backend
+```
+
+6. Start all services:
 
 ```bash
 npm run dev
 ```
+
+## Database troubleshooting
+
+- If `db:check` fails, ensure PostgreSQL is running:
+
+```bash
+docker compose ps postgres
+```
+
+- Verify `apps/backend/.env` contains a valid `DATABASE_URL`:
+
+```text
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
+```
+
+- Backend startup verifies the PostgreSQL connection and logs a clear error if the connection fails.
+- `GET /api/v1/health` returns `503` with actionable database status when PostgreSQL is unavailable.
 
 ## Security baseline
 
