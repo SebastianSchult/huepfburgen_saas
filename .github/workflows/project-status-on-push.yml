@@ -15,23 +15,27 @@ jobs:
   move-ticket-to-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate project automation token
-        if: ${{ secrets.PROJECT_AUTOMATION_TOKEN == '' }}
-        run: |
-          echo "::error::Missing secret PROJECT_AUTOMATION_TOKEN."
-          echo "::error::Create a Personal Access Token with project access and add it as repository secret PROJECT_AUTOMATION_TOKEN."
-          exit 1
-
       - name: Move linked issue to Review
-        if: ${{ secrets.PROJECT_AUTOMATION_TOKEN != '' }}
         uses: actions/github-script@v7
+        env:
+          PROJECT_AUTOMATION_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
         with:
-          github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+          github-token: ${{ github.token }}
           script: |
             try {
               const projectId = "PVT_kwHOCUUiJM4BRvo_";
               const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
               const reviewOptionId = "f769e6a8";
+              const projectToken = process.env.PROJECT_AUTOMATION_TOKEN;
+
+              if (!projectToken) {
+                core.setFailed(
+                  "Missing secret PROJECT_AUTOMATION_TOKEN. Add a PAT (classic) with scopes: repo, project."
+                );
+                return;
+              }
+
+              const projectGithub = github.getOctokit(projectToken);
 
               const branch = context.ref.replace("refs/heads/", "");
               const match = branch.match(/^(\d+)-/);
@@ -71,7 +75,7 @@ jobs:
               let itemId = null;
 
               while (hasNextPage && !itemId) {
-                const projectData = await github.graphql(
+                const projectData = await projectGithub.graphql(
                   `
                   query($projectId: ID!, $cursor: String) {
                     node(id: $projectId) {
@@ -110,7 +114,7 @@ jobs:
               }
 
               if (!itemId) {
-                const addData = await github.graphql(
+                const addData = await projectGithub.graphql(
                   `
                   mutation($projectId: ID!, $contentId: ID!) {
                     addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
@@ -126,7 +130,7 @@ jobs:
                 core.info(`Added issue #${issueNumber} to project.`);
               }
 
-              await github.graphql(
+              await projectGithub.graphql(
                 `
                 mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
                   updateProjectV2ItemFieldValue(
