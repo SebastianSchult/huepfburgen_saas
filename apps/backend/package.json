@@ -13,6 +13,7 @@
     "prisma:validate": "prisma validate",
     "prisma:format": "prisma format",
     "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
     "prisma:studio": "prisma studio",
     "db:check": "tsx src/scripts/check-db.ts"
   },

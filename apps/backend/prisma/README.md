@@ -12,6 +12,30 @@ This repository uses **Prisma** as the standard ORM for the backend.
 
 - `schema.prisma` - source of truth for database models and enums.
 
+## MVP base schema scope
+
+The initial schema baseline focuses on MVP core domain entities:
+
+- `tenants`
+- `users`
+- `locations`
+- `equipment_categories`
+- `equipment`
+- `customers`
+- `bookings`
+- `booking_items`
+- `equipment_unavailability`
+
+Initial enum set for MVP domain logic:
+
+- `TenantPlan`
+- `TenantStatus`
+- `UserRole`
+- `UserStatus`
+- `CustomerType`
+- `EquipmentStatus`
+- `BookingStatus`
+
 ## Local commands
 
 Run from repository root:
@@ -21,6 +45,7 @@ npm run prisma:validate -w @huepf/backend
 npm run prisma:format -w @huepf/backend
 npm run prisma:generate -w @huepf/backend
 npm run prisma:migrate:dev -w @huepf/backend -- --name <migration_name>
+npm run prisma:migrate:diff -w @huepf/backend > /tmp/init_schema.sql
 npm run prisma:studio -w @huepf/backend
 ```
 
@@ -30,7 +55,8 @@ npm run prisma:studio -w @huepf/backend
 2. Validate and format schema (`prisma:validate`, `prisma:format`).
 3. Generate a named migration (`prisma:migrate:dev -- --name ...`).
 4. Regenerate Prisma Client (`prisma:generate`).
-5. Run backend checks (`typecheck`, `lint`) before creating the PR.
+5. Optionally preview SQL from an empty database (`prisma:migrate:diff`).
+6. Run backend checks (`typecheck`, `lint`) before creating the PR.
 
 ## Rules
 
