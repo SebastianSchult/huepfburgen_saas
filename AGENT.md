@@ -12,6 +12,19 @@ Repository-level instructions for development agents.
 - Work ticket-first from GitHub issues.
 - Keep implementation focused on the selected ticket.
 
+### Mandatory branch and merge flow
+
+Use this delivery flow for implementation tickets:
+
+1. Create a feature branch from `develop`.
+2. Open the ticket PR from feature branch to `develop`.
+3. After review and validation, merge `develop` into `main` in a separate integration step.
+
+Important:
+
+- Do not open regular feature PRs directly to `main`.
+- `main` is only updated through the controlled `develop` -> `main` merge flow.
+
 ### Mandatory project status transitions
 
 When working with the GitHub Project board, use this status flow:
