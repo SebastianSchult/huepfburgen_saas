@@ -33,13 +33,11 @@ jobs:
           FRONTEND_FTP_SERVER: ${{ secrets.FRONTEND_FTP_SERVER }}
           FRONTEND_FTP_USERNAME: ${{ secrets.FRONTEND_FTP_USERNAME }}
           FRONTEND_FTP_PASSWORD: ${{ secrets.FRONTEND_FTP_PASSWORD }}
-          FRONTEND_FTP_SERVER_DIR: ${{ secrets.FRONTEND_FTP_SERVER_DIR }}
         run: |
           required_secrets=(
             FRONTEND_FTP_SERVER
             FRONTEND_FTP_USERNAME
             FRONTEND_FTP_PASSWORD
-            FRONTEND_FTP_SERVER_DIR
           )
 
           for secret_name in "${required_secrets[@]}"; do
@@ -63,4 +61,4 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./apps/frontend/dist/
-          server-dir: ${{ secrets.FRONTEND_FTP_SERVER_DIR }}
+          server-dir: /www/htdocs/w01f67fb/saas.sebastian-schult.net/
