@@ -152,7 +152,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d backe
 
 Current deployment target path in workflow:
 
-- `/www/htdocs/w01f67fb/saas.sebastian-schult.net/`
+- `/www/htdocs/w01f67fb/sebastian-schult.net/`
 
 ### Workflow behavior
 
