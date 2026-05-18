@@ -177,6 +177,9 @@ model Customer {
 
   @@index([tenantId])
   @@index([tenantId, type])
+  @@index([tenantId, lastName, firstName])
+  @@index([tenantId, companyName])
+  @@index([tenantId, email])
   @@map("customers")
 }
 
