@@ -1,9 +1,11 @@
-name: Project Status On Merge
+name: Project Status On PR Open
 
 on:
   pull_request:
     types:
-      - closed
+      - opened
+      - reopened
+      - ready_for_review
     branches:
       - develop
       - main
@@ -11,10 +13,10 @@ on:
 permissions:
   contents: read
   repository-projects: write
+  pull-requests: read
 
 jobs:
-  move-ticket-to-test:
-    if: ${{ github.event.pull_request.merged == true }}
+  move-ticket-to-review:
     runs-on: ubuntu-latest
     steps:
       - name: Validate project automation token
@@ -26,7 +28,7 @@ jobs:
             exit 1
           fi
 
-      - name: Move linked issue to Test
+      - name: Move linked issue to Review
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
@@ -34,29 +36,30 @@ jobs:
             try {
               const projectId = "PVT_kwHOCUUiJM4BRvo_";
               const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
-              const testOptionId = "a4c0af78";
+              const reviewOptionId = "f769e6a8";
 
               const pr = context.payload.pull_request;
               const headBranch = pr.head.ref;
               const title = pr.title ?? "";
               const body = pr.body ?? "";
 
-              // Prefer ticket number from branch pattern: "11-some-title".
               let issueNumber = null;
-              let branchMatch = headBranch.match(/^(\d+)-/);
-              if (branchMatch) {
-                issueNumber = Number(branchMatch[1]);
+
+              // Ticket branch pattern: "14-some-title".
+              let match = headBranch.match(/^(\d+)-/);
+              if (match) {
+                issueNumber = Number(match[1]);
               }
 
-              // Support Codex branch naming like "codex/issue-14-something".
+              // Codex branch pattern: "codex/issue-14-some-title".
               if (!issueNumber) {
-                branchMatch = headBranch.match(/^codex\/issue-(\d+)(?:-|$)/);
-                if (branchMatch) {
-                  issueNumber = Number(branchMatch[1]);
+                match = headBranch.match(/^codex\/issue-(\d+)(?:-|$)/);
+                if (match) {
+                  issueNumber = Number(match[1]);
                 }
               }
 
-              // Fallback: parse references like "#11" from title/body.
+              // Fallback: parse "#14" from title/body.
               if (!issueNumber) {
                 const textMatch = `${title}\n${body}`.match(/#(\d+)/);
                 if (textMatch) {
@@ -65,7 +68,7 @@ jobs:
               }
 
               if (!issueNumber) {
-                core.info(`No issue number found for merged PR #${pr.number}. Skipping.`);
+                core.info(`No issue number found for PR #${pr.number}. Skipping.`);
                 return;
               }
 
@@ -154,13 +157,13 @@ jobs:
 
               await github.graphql(
                 `
-                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $testOptionId: String!) {
+                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
                   updateProjectV2ItemFieldValue(
                     input: {
                       projectId: $projectId
                       itemId: $itemId
                       fieldId: $statusFieldId
-                      value: { singleSelectOptionId: $testOptionId }
+                      value: { singleSelectOptionId: $reviewOptionId }
                     }
                   ) {
                     projectV2Item {
@@ -169,10 +172,10 @@ jobs:
                   }
                 }
                 `,
-                { projectId, itemId, statusFieldId, testOptionId }
+                { projectId, itemId, statusFieldId, reviewOptionId }
               );
 
-              core.info(`Moved issue #${issueNumber} to Test.`);
+              core.info(`Moved issue #${issueNumber} to Review.`);
             } catch (error) {
               const message = error?.message ?? String(error);
               if (message.includes("Resource not accessible by integration")) {
@@ -181,5 +184,5 @@ jobs:
                 );
                 return;
               }
-              core.setFailed(`Project merge automation failed: ${message}`);
+              core.setFailed(`Project PR-open automation failed: ${message}`);
             }
