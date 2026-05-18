@@ -12,7 +12,7 @@ permissions:
   repository-projects: write
 
 jobs:
-  move-ticket-to-review:
+  move-ticket-to-in-progress:
     runs-on: ubuntu-latest
     steps:
       - name: Validate project automation token
@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
 
-      - name: Move linked issue to Review
+      - name: Move linked issue to In Progress
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
@@ -32,19 +32,59 @@ jobs:
             try {
               const projectId = "PVT_kwHOCUUiJM4BRvo_";
               const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
-              const reviewOptionId = "f769e6a8";
+              const inProgressOptionId = "10b8ed08";
 
               const branch = context.ref.replace("refs/heads/", "");
-              const match = branch.match(/^(\d+)-/);
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
 
-              if (!match) {
-                core.info(`Branch '${branch}' does not start with an issue number. Skipping.`);
+              // If there is already an open PR for this branch, do not move
+              // the issue back from Review/Test to In Progress on subsequent pushes.
+              const headRefWithOwner = `${owner}:${branch}`;
+              const existingPr = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: "open",
+                head: headRefWithOwner,
+                per_page: 1
+              });
+
+              if (existingPr.data.length > 0) {
+                core.info(`Open PR exists for '${branch}'. Skipping In Progress update.`);
                 return;
               }
 
-              const issueNumber = Number(match[1]);
-              const owner = context.repo.owner;
-              const repo = context.repo.repo;
+              let issueNumber = null;
+              let match = branch.match(/^(\d+)-/);
+              if (match) {
+                issueNumber = Number(match[1]);
+              }
+
+              // Support Codex branch naming like "codex/issue-14-something".
+              if (!issueNumber) {
+                match = branch.match(/^codex\/issue-(\d+)(?:-|$)/);
+                if (match) {
+                  issueNumber = Number(match[1]);
+                }
+              }
+
+              // Fallback: parse issue reference from pushed commit messages.
+              if (!issueNumber) {
+                const commits = context.payload.commits ?? [];
+                for (const commit of commits) {
+                  const text = `${commit.message ?? ""}`;
+                  const issueMatch = text.match(/#(\d+)/);
+                  if (issueMatch) {
+                    issueNumber = Number(issueMatch[1]);
+                    break;
+                  }
+                }
+              }
+
+              if (!issueNumber) {
+                core.info(`No issue number found from branch '${branch}' or commit messages. Skipping.`);
+                return;
+              }
 
               const issueData = await github.graphql(
                 `
@@ -129,13 +169,13 @@ jobs:
 
               await github.graphql(
                 `
-                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $reviewOptionId: String!) {
+                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $inProgressOptionId: String!) {
                   updateProjectV2ItemFieldValue(
                     input: {
                       projectId: $projectId
                       itemId: $itemId
                       fieldId: $statusFieldId
-                      value: { singleSelectOptionId: $reviewOptionId }
+                      value: { singleSelectOptionId: $inProgressOptionId }
                     }
                   ) {
                     projectV2Item {
@@ -144,10 +184,10 @@ jobs:
                   }
                 }
                 `,
-                { projectId, itemId, statusFieldId, reviewOptionId }
+                { projectId, itemId, statusFieldId, inProgressOptionId }
               );
 
-              core.info(`Moved issue #${issueNumber} to Review.`);
+              core.info(`Moved issue #${issueNumber} to In Progress.`);
             } catch (error) {
               const message = error?.message ?? String(error);
               if (message.includes("Resource not accessible by integration")) {
