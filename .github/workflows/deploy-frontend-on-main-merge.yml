@@ -61,4 +61,4 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./apps/frontend/dist/
-          server-dir: /www/htdocs/w01f67fb/saas.sebastian-schult.net/
+          server-dir: /www/htdocs/w01f67fb/sebastian-schult.net/
