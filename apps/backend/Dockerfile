@@ -11,6 +11,7 @@ COPY packages/eslint-config/package.json packages/eslint-config/package.json
 RUN npm ci
 
 COPY packages/shared-types packages/shared-types
+COPY packages/tsconfig packages/tsconfig
 COPY apps/backend apps/backend
 
 RUN npm run build -w @huepf/shared-types \
