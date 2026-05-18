@@ -149,7 +149,10 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d backe
 - `FRONTEND_FTP_SERVER`: FTP host (for example `w01f67fb.kasserver.com`)
 - `FRONTEND_FTP_USERNAME`: FTP username
 - `FRONTEND_FTP_PASSWORD`: FTP password
-- `FRONTEND_FTP_SERVER_DIR`: target folder on server (for example `/www/htdocs/w01f67fb/`)
+
+Current deployment target path in workflow:
+
+- `/www/htdocs/w01f67fb/saas.sebastian-schult.net/`
 
 ### Workflow behavior
 
