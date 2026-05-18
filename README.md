@@ -137,6 +137,26 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d backe
 - Aborts if `.env.production` is missing on the server.
 - Connects via SSH and runs the Docker Compose deployment sequence in `DEPLOY_TARGET_DIR`.
 
+## Frontend Deployment (GitHub Actions + FTPS)
+
+- Workflow: `.github/workflows/deploy-frontend-on-main-merge.yml`
+- Trigger: merged pull requests into `main`
+- Build environment:
+  - `VITE_API_BASE_URL=https://api.46.225.213.51.sslip.io/api/v1`
+
+### Required repository secrets
+
+- `FRONTEND_FTP_SERVER`: FTP host (for example `w01f67fb.kasserver.com`)
+- `FRONTEND_FTP_USERNAME`: FTP username
+- `FRONTEND_FTP_PASSWORD`: FTP password
+- `FRONTEND_FTP_SERVER_DIR`: target folder on server (for example `/www/htdocs/w01f67fb/`)
+
+### Workflow behavior
+
+- Runs `npm ci`.
+- Builds frontend with the production API base URL.
+- Deploys `apps/frontend/dist/` via FTPS to the configured server directory.
+
 ## Next implementation slices
 
 1. Auth login + `/api/v1/auth/me`

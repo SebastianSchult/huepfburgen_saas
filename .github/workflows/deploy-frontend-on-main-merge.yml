@@ -1,0 +1,66 @@
+name: Deploy Frontend On Main Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-frontend-main
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate frontend deploy secrets
+        env:
+          FRONTEND_FTP_SERVER: ${{ secrets.FRONTEND_FTP_SERVER }}
+          FRONTEND_FTP_USERNAME: ${{ secrets.FRONTEND_FTP_USERNAME }}
+          FRONTEND_FTP_PASSWORD: ${{ secrets.FRONTEND_FTP_PASSWORD }}
+          FRONTEND_FTP_SERVER_DIR: ${{ secrets.FRONTEND_FTP_SERVER_DIR }}
+        run: |
+          required_secrets=(
+            FRONTEND_FTP_SERVER
+            FRONTEND_FTP_USERNAME
+            FRONTEND_FTP_PASSWORD
+            FRONTEND_FTP_SERVER_DIR
+          )
+
+          for secret_name in "${required_secrets[@]}"; do
+            if [ -z "${!secret_name}" ]; then
+              echo "::error::Missing secret ${secret_name}."
+              exit 1
+            fi
+          done
+
+      - name: Build frontend with production API URL
+        env:
+          VITE_API_BASE_URL: https://api.46.225.213.51.sslip.io/api/v1
+        run: npm run build -w @huepf/frontend
+
+      - name: Deploy frontend via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FRONTEND_FTP_SERVER }}
+          username: ${{ secrets.FRONTEND_FTP_USERNAME }}
+          password: ${{ secrets.FRONTEND_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./apps/frontend/dist/
+          server-dir: ${{ secrets.FRONTEND_FTP_SERVER_DIR }}
