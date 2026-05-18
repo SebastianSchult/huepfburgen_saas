@@ -25,9 +25,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Prisma
-apps/backend/prisma/migrations/
-
 # Local data
 postgres-data/
 redis-data/
