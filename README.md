@@ -97,6 +97,46 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
 - All business tables include `tenant_id`.
 - Do not commit `.env` files or secrets.
 
+## Deployment (GitHub Actions)
+
+- Workflow: `.github/workflows/deploy-on-main-merge.yml`
+- Trigger: merged pull requests into `main`
+- Production services are defined in `docker-compose.prod.yml`:
+  - `backend` (Fastify API)
+  - `postgres`
+  - `redis`
+  - `caddy` (automatic HTTPS reverse proxy)
+
+Server-side production environment template:
+
+- `.env.production.example` (copy to `.env.production` on the server and fill values)
+
+Deploy sequence executed on the server:
+
+```bash
+git pull --ff-only origin main
+docker compose --env-file .env.production -f docker-compose.prod.yml pull postgres redis caddy
+docker compose --env-file .env.production -f docker-compose.prod.yml build backend
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d postgres redis
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm backend npx prisma db push --schema prisma/schema.prisma
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d backend caddy
+```
+
+### Required repository secrets
+
+- `DEPLOY_SSH_HOST`: server hostname or IP
+- `DEPLOY_SSH_USER`: SSH user
+- `DEPLOY_SSH_PORT`: SSH port (for example `22`)
+- `DEPLOY_SSH_PRIVATE_KEY`: private SSH key used by GitHub Actions
+- `DEPLOY_TARGET_DIR`: absolute directory on server where the repository is cloned
+
+### Workflow behavior
+
+- Runs `npm ci`, `npm run typecheck`, `npm run lint`, and `npm run build` before deployment.
+- Aborts deployment if any required secret is missing.
+- Aborts if `.env.production` is missing on the server.
+- Connects via SSH and runs the Docker Compose deployment sequence in `DEPLOY_TARGET_DIR`.
+
 ## Next implementation slices
 
 1. Auth login + `/api/v1/auth/me`
