@@ -3,6 +3,7 @@ import fastifyCors from "@fastify/cors";
 import { ZodError } from "zod";
 import apiRoutes from "./routes/index.js";
 import authPlugin from "./plugins/auth.js";
+import databasePlugin from "./plugins/database.js";
 import { env } from "./config/env.js";
 import { HttpError } from "./utils/http-error.js";
 
@@ -18,6 +19,7 @@ export const buildApp = () => {
     credentials: true
   });
 
+  app.register(databasePlugin);
   app.register(authPlugin);
   app.register(apiRoutes, { prefix: "/api/v1" });
 

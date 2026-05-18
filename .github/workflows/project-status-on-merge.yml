@@ -1,0 +1,176 @@
+name: Project Status On Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - develop
+
+permissions:
+  contents: read
+  repository-projects: write
+
+jobs:
+  move-ticket-to-test:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate project automation token
+        env:
+          PROJECT_AUTOMATION_TOKEN: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$PROJECT_AUTOMATION_TOKEN" ]; then
+            echo "::error::Missing secret PROJECT_AUTOMATION_TOKEN. Add a PAT (classic) with scopes: repo, project."
+            exit 1
+          fi
+
+      - name: Move linked issue to Test
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PROJECT_AUTOMATION_TOKEN }}
+          script: |
+            try {
+              const projectId = "PVT_kwHOCUUiJM4BRvo_";
+              const statusFieldId = "PVTSSF_lAHOCUUiJM4BRvo_zg_e3NI";
+              const testOptionId = "a4c0af78";
+
+              const pr = context.payload.pull_request;
+              const headBranch = pr.head.ref;
+              const title = pr.title ?? "";
+              const body = pr.body ?? "";
+
+              // Prefer ticket number from branch pattern: "11-some-title".
+              let issueNumber = null;
+              const branchMatch = headBranch.match(/^(\d+)-/);
+              if (branchMatch) {
+                issueNumber = Number(branchMatch[1]);
+              }
+
+              // Fallback: parse references like "#11" from title/body.
+              if (!issueNumber) {
+                const textMatch = `${title}\n${body}`.match(/#(\d+)/);
+                if (textMatch) {
+                  issueNumber = Number(textMatch[1]);
+                }
+              }
+
+              if (!issueNumber) {
+                core.info(`No issue number found for merged PR #${pr.number}. Skipping.`);
+                return;
+              }
+
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+
+              const issueData = await github.graphql(
+                `
+                query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $issueNumber) {
+                      id
+                      number
+                      title
+                    }
+                  }
+                }
+                `,
+                { owner, repo, issueNumber }
+              );
+
+              const issue = issueData.repository?.issue;
+              if (!issue) {
+                core.info(`No issue #${issueNumber} found in ${owner}/${repo}. Skipping.`);
+                return;
+              }
+
+              let hasNextPage = true;
+              let cursor = null;
+              let itemId = null;
+
+              while (hasNextPage && !itemId) {
+                const projectData = await github.graphql(
+                  `
+                  query($projectId: ID!, $cursor: String) {
+                    node(id: $projectId) {
+                      ... on ProjectV2 {
+                        items(first: 100, after: $cursor) {
+                          pageInfo {
+                            hasNextPage
+                            endCursor
+                          }
+                          nodes {
+                            id
+                            content {
+                              ... on Issue {
+                                id
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  `,
+                  { projectId, cursor }
+                );
+
+                const items = projectData.node?.items?.nodes ?? [];
+                const matchItem = items.find((item) => item.content?.id === issue.id);
+                if (matchItem) {
+                  itemId = matchItem.id;
+                  break;
+                }
+
+                hasNextPage = projectData.node?.items?.pageInfo?.hasNextPage ?? false;
+                cursor = projectData.node?.items?.pageInfo?.endCursor ?? null;
+              }
+
+              if (!itemId) {
+                const addData = await github.graphql(
+                  `
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                  `,
+                  { projectId, contentId: issue.id }
+                );
+                itemId = addData.addProjectV2ItemById.item.id;
+                core.info(`Added issue #${issueNumber} to project.`);
+              }
+
+              await github.graphql(
+                `
+                mutation($projectId: ID!, $itemId: ID!, $statusFieldId: ID!, $testOptionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $statusFieldId
+                      value: { singleSelectOptionId: $testOptionId }
+                    }
+                  ) {
+                    projectV2Item {
+                      id
+                    }
+                  }
+                }
+                `,
+                { projectId, itemId, statusFieldId, testOptionId }
+              );
+
+              core.info(`Moved issue #${issueNumber} to Test.`);
+            } catch (error) {
+              const message = error?.message ?? String(error);
+              if (message.includes("Resource not accessible by integration")) {
+                core.setFailed(
+                  "PROJECT_AUTOMATION_TOKEN has insufficient access to the project. Use a token with project scope and repository access."
+                );
+                return;
+              }
+              core.setFailed(`Project merge automation failed: ${message}`);
+            }
