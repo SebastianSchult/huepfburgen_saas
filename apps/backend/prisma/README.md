@@ -47,7 +47,15 @@ npm run prisma:generate -w @huepf/backend
 npm run prisma:migrate:dev -w @huepf/backend -- --name <migration_name>
 npm run prisma:migrate:diff -w @huepf/backend > /tmp/init_schema.sql
 npm run prisma:studio -w @huepf/backend
+npm run prisma:seed -w @huepf/backend
+npm run db:seed -w @huepf/backend
 ```
+
+Seed behavior:
+
+- deterministic demo seed for tenant slug `demo-huepfburgen`
+- rerunnable: existing demo tenant data is reset and recreated
+- includes minimal coherent relations across MVP entities
 
 ## Incremental schema workflow
 
