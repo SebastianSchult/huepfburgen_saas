@@ -47,7 +47,15 @@ npm run prisma:generate -w @huepf/backend
 npm run prisma:migrate:dev -w @huepf/backend -- --name <migration_name>
 npm run prisma:migrate:diff -w @huepf/backend > /tmp/init_schema.sql
 npm run prisma:studio -w @huepf/backend
+npm run prisma:seed -w @huepf/backend
+npm run db:seed -w @huepf/backend
 ```
+
+Seed behavior:
+
+- deterministic demo seed for tenant slug `demo-huepfburgen`
+- rerunnable: existing demo tenant data is reset and recreated
+- includes minimal coherent relations across MVP entities
 
 ## Incremental schema workflow
 
@@ -63,3 +71,14 @@ npm run prisma:studio -w @huepf/backend
 - Keep migrations small and ticket-focused.
 - Prefer additive schema changes for MVP progression.
 - Use descriptive migration names for easier review and rollback planning.
+
+## `updated_at` strategy
+
+`updated_at` is maintained with a layered approach:
+
+- Prisma models use `@updatedAt` for normal ORM writes.
+- A database trigger function (`set_updated_at_timestamp`) is applied to all mutable MVP tables as a safety net for non-Prisma SQL updates.
+
+Verification guidance:
+
+- Run a row update (via Prisma or SQL) and confirm `updated_at` changes automatically.

@@ -68,7 +68,15 @@ npm run prisma:migrate:dev -w @huepf/backend
 npm run db:check -w @huepf/backend
 ```
 
-6. Start all services:
+6. Seed local demo data (deterministic, safe to rerun):
+
+```bash
+npm run db:seed -w @huepf/backend
+```
+
+The seed process resets only the demo tenant (`demo-huepfburgen`) and recreates a coherent minimal dataset (users, location, category, equipment, customer, booking, booking item, unavailability).
+
+7. Start all services:
 
 ```bash
 npm run dev
@@ -94,8 +102,16 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
 ## Security baseline
 
 - Tenant context is resolved from JWT, never trusted from payload.
+- JWT verification enforces `issuer` and `audience` claims.
+- Protected API routes re-validate active user and tenant state on each request.
 - All business tables include `tenant_id`.
+- Password hashing uses `scrypt` with per-password random salts.
 - Do not commit `.env` files or secrets.
+
+### Demo auth credentials (local seed data)
+
+- owner: `owner@demo-huepfburgen.local` / `owner-demo-password`
+- staff: `staff@demo-huepfburgen.local` / `staff-demo-password`
 
 ## Deployment (GitHub Actions)
 

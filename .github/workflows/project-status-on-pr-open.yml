@@ -6,9 +6,6 @@ on:
       - opened
       - reopened
       - ready_for_review
-    branches:
-      - develop
-      - main
 
 permissions:
   contents: read
@@ -39,9 +36,16 @@ jobs:
               const reviewOptionId = "f769e6a8";
 
               const pr = context.payload.pull_request;
+              const baseBranch = pr.base.ref;
               const headBranch = pr.head.ref;
               const title = pr.title ?? "";
               const body = pr.body ?? "";
+
+              // Release PRs should not move roadmap tickets.
+              if (baseBranch === "main" && headBranch === "develop") {
+                core.info("Skipping develop -> main release PR.");
+                return;
+              }
 
               let issueNumber = null;
 
