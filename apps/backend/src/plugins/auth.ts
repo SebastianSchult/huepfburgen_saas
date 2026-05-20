@@ -19,6 +19,7 @@ const authPlugin = fp(async (app) => {
   });
 
   app.decorateRequest("authUser", null);
+  app.decorateRequest("requestContext", null);
 
   app.decorate("authenticate", async (request, _reply) => {
     let tokenPayload;
@@ -44,6 +45,10 @@ const authPlugin = fp(async (app) => {
         status: true,
         tenant: {
           select: {
+            id: true,
+            name: true,
+            slug: true,
+            plan: true,
             status: true
           }
         }
@@ -62,12 +67,26 @@ const authPlugin = fp(async (app) => {
       throw new HttpError(403, "TENANT_INACTIVE", "Tenant account is not active");
     }
 
-    request.authUser = {
+    const authUser = {
       id: user.id,
       tenantId: user.tenantId,
       email: user.email,
       role: user.role
     };
+
+    request.authUser = authUser;
+    request.requestContext = {
+      user: authUser,
+      tenant: user.tenant
+    };
+  });
+
+  app.decorate("requireRequestContext", (request) => {
+    if (!request.requestContext) {
+      throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
+    }
+
+    return request.requestContext;
   });
 });
 
