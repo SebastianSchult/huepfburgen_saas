@@ -1,5 +1,5 @@
 import "fastify";
-import type { AuthUser, TenantPlan, TenantStatus } from "@huepf/shared-types";
+import type { AuthUser, TenantPlan, TenantStatus, UserRole } from "@huepf/shared-types";
 import type { PrismaClient } from "@prisma/client";
 
 declare module "fastify" {
@@ -23,6 +23,8 @@ declare module "fastify" {
     prisma: PrismaClient;
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireRequestContext: (request: FastifyRequest) => TenantRequestContext;
+    authorizeRoles: (request: FastifyRequest, allowedRoles: readonly UserRole[]) => TenantRequestContext;
+    authorizeMinimumRole: (request: FastifyRequest, minimumRole: UserRole) => TenantRequestContext;
     verifyDatabaseConnection: () => Promise<void>;
   }
 }
