@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@prisma/client";
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
@@ -132,9 +132,9 @@ const seedBookings = [
     startDate: bookingStartDate,
     endDate: bookingEndDate,
     status: "confirmed" as const,
-    subtotalAmount: new Prisma.Decimal("250.00"),
-    depositAmount: new Prisma.Decimal("50.00"),
-    totalAmount: new Prisma.Decimal("300.00"),
+    subtotalAmount: "250.00",
+    depositAmount: "50.00",
+    totalAmount: "300.00",
     notes: "Seed booking for coherent demo relations",
     createdByUserId: seedIds.ownerUserId
   }
@@ -147,8 +147,8 @@ const seedBookingItems = [
     bookingId: seedIds.bookingId,
     equipmentId: seedIds.equipmentId,
     quantity: 1,
-    unitPrice: new Prisma.Decimal("250.00"),
-    lineTotal: new Prisma.Decimal("250.00")
+    unitPrice: "250.00",
+    lineTotal: "250.00"
   }
 ];
 
@@ -183,7 +183,7 @@ const resetSeedTenant = async (tx: Prisma.TransactionClient) => {
 };
 
 try {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await resetSeedTenant(tx);
 
     await tx.tenant.create({
