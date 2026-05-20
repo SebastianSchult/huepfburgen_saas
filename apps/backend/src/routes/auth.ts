@@ -66,12 +66,11 @@ const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get("/auth/me", { preHandler: app.authenticate }, async (request) => {
-    if (!request.authUser) {
-      throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
-    }
+    const context = app.requireRequestContext(request);
 
     return {
-      user: request.authUser
+      user: context.user,
+      tenant: context.tenant
     };
   });
 
