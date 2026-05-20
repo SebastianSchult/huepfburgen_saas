@@ -1,6 +1,7 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
+import { hashPassword } from "../utils/password.js";
 
 loadEnv();
 
@@ -51,7 +52,7 @@ const seedUsers = [
     firstName: "Demo",
     lastName: "Owner",
     email: "owner@demo-huepfburgen.local",
-    passwordHash: "$seed$owner-password-not-for-production",
+    password: "owner-demo-password",
     role: "owner" as const,
     status: "active" as const
   },
@@ -61,7 +62,7 @@ const seedUsers = [
     firstName: "Demo",
     lastName: "Staff",
     email: "staff@demo-huepfburgen.local",
-    passwordHash: "$seed$staff-password-not-for-production",
+    password: "staff-demo-password",
     role: "staff" as const,
     status: "active" as const
   }
@@ -190,8 +191,15 @@ try {
       data: seedTenant
     });
 
+    const usersWithPasswordHashes = await Promise.all(
+      seedUsers.map(async ({ password, ...user }) => ({
+        ...user,
+        passwordHash: await hashPassword(password)
+      }))
+    );
+
     await tx.user.createMany({
-      data: seedUsers
+      data: usersWithPasswordHashes
     });
 
     await tx.location.createMany({
