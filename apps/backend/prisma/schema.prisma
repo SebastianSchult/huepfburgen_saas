@@ -246,7 +246,7 @@ model EquipmentUnavailability {
   equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
-  @@index([equipmentId, startDate, endDate])
+  @@index([tenantId, equipmentId, startDate, endDate])
   @@map("equipment_unavailability")
 }
 
