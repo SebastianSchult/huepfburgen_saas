@@ -10,6 +10,22 @@ const loginBodySchema = z.object({
   password: z.string().min(8)
 });
 
+const authMeResponseSchema = z.object({
+  user: z.object({
+    id: z.string().uuid(),
+    tenantId: z.string().uuid(),
+    email: z.string().email(),
+    role: z.enum(["owner", "admin", "staff", "viewer"])
+  }),
+  tenant: z.object({
+    id: z.string().uuid(),
+    name: z.string().min(1),
+    slug: z.string().min(1),
+    plan: z.enum(["basic", "pro", "business"]),
+    status: z.enum(["active", "suspended", "cancelled"])
+  })
+});
+
 const authRoutes: FastifyPluginAsync = async (app) => {
   app.post("/auth/login", async (request) => {
     const body = loginBodySchema.parse(request.body);
@@ -68,10 +84,10 @@ const authRoutes: FastifyPluginAsync = async (app) => {
   app.get("/auth/me", { preHandler: app.authenticate }, async (request) => {
     const context = app.requireRequestContext(request);
 
-    return {
+    return authMeResponseSchema.parse({
       user: context.user,
       tenant: context.tenant
-    };
+    });
   });
 
   app.post("/auth/logout", { preHandler: app.authenticate }, async () => {
