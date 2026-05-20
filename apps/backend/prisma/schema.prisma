@@ -89,6 +89,7 @@ model User {
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBookings Booking[] @relation("created_by_user")
 
+  @@unique([tenantId, id])
   @@index([tenantId])
   @@map("users")
 }
@@ -108,6 +109,7 @@ model Location {
   tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   equipment Equipment[]
 
+  @@unique([tenantId, id])
   @@index([tenantId])
   @@map("locations")
 }
@@ -123,6 +125,7 @@ model EquipmentCategory {
   tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   equipment Equipment[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("equipment_categories")
@@ -149,9 +152,12 @@ model Equipment {
   bookingItems   BookingItem[]
   unavailability EquipmentUnavailability[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, locationId])
   @@map("equipment")
 }
 
@@ -175,6 +181,7 @@ model Customer {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
+  @@unique([tenantId, id])
   @@index([tenantId])
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
@@ -200,13 +207,16 @@ model Booking {
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customer      Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customer      Customer      @relation(fields: [tenantId, customerId], references: [tenantId, id], onDelete: Restrict)
   createdByUser User?         @relation("created_by_user", fields: [createdByUserId], references: [id], onDelete: SetNull)
   bookingItems  BookingItem[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, bookingNumber])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, customerId])
+  @@index([tenantId, createdByUserId])
   @@index([tenantId, startDate, endDate])
   @@map("bookings")
 }
@@ -223,12 +233,12 @@ model BookingItem {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict)
+  booking   Booking   @relation(fields: [tenantId, bookingId], references: [tenantId, id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [tenantId, equipmentId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([tenantId])
-  @@index([bookingId])
-  @@index([equipmentId])
+  @@index([tenantId, bookingId])
+  @@index([tenantId, equipmentId])
   @@map("booking_items")
 }
 
@@ -243,10 +253,12 @@ model EquipmentUnavailability {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [tenantId, equipmentId], references: [tenantId, id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([tenantId, startDate, endDate])
   @@index([tenantId, equipmentId, startDate, endDate])
+  @@index([equipmentId, startDate, endDate])
   @@map("equipment_unavailability")
 }
 
