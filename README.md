@@ -95,7 +95,13 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
 
 - Tenant context is resolved from JWT, never trusted from payload.
 - All business tables include `tenant_id`.
+- Password hashing uses `scrypt` with per-password random salts.
 - Do not commit `.env` files or secrets.
+
+### Demo auth credentials (local placeholder flow)
+
+- owner: `owner@demo-huepfburgen.local` / `owner-demo-password`
+- staff: `staff@demo-huepfburgen.local` / `staff-demo-password`
 
 ## Deployment (GitHub Actions)
 
