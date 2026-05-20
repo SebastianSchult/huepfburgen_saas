@@ -106,7 +106,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
 - Password hashing uses `scrypt` with per-password random salts.
 - Do not commit `.env` files or secrets.
 
-### Demo auth credentials (local placeholder flow)
+### Demo auth credentials (local seed data)
 
 - owner: `owner@demo-huepfburgen.local` / `owner-demo-password`
 - staff: `staff@demo-huepfburgen.local` / `staff-demo-password`
