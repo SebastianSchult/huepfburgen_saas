@@ -5,10 +5,7 @@ import {
   type EquipmentListResponse
 } from "./equipment.schemas.js";
 
-type EquipmentFindManyArgs = Parameters<PrismaClient["equipment"]["findMany"]>[0];
-type EquipmentWhereInput = NonNullable<EquipmentFindManyArgs>["where"];
-
-const createEquipmentWhereInput = (tenantId: string, query: EquipmentListQuery): EquipmentWhereInput => {
+const createEquipmentWhereInput = (tenantId: string, query: EquipmentListQuery) => {
   const search = query.search?.trim();
 
   return {
@@ -23,25 +20,25 @@ const createEquipmentWhereInput = (tenantId: string, query: EquipmentListQuery):
             {
               name: {
                 contains: search,
-                mode: "insensitive"
+                mode: "insensitive" as const
               }
             },
             {
               description: {
                 contains: search,
-                mode: "insensitive"
+                mode: "insensitive" as const
               }
             },
             {
               sku: {
                 contains: search,
-                mode: "insensitive"
+                mode: "insensitive" as const
               }
             },
             {
               serialNumber: {
                 contains: search,
-                mode: "insensitive"
+                mode: "insensitive" as const
               }
             }
           ]
