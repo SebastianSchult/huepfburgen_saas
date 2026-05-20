@@ -103,6 +103,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/huepfburgen_saas
 
 - Tenant context is resolved from JWT, never trusted from payload.
 - JWT verification enforces `issuer` and `audience` claims.
+- Protected API routes re-validate active user and tenant state on each request.
 - All business tables include `tenant_id`.
 - Password hashing uses `scrypt` with per-password random salts.
 - Do not commit `.env` files or secrets.
