@@ -4,9 +4,6 @@ on:
   pull_request:
     types:
       - closed
-    branches:
-      - develop
-      - main
 
 permissions:
   contents: read
@@ -37,9 +34,16 @@ jobs:
               const testOptionId = "a4c0af78";
 
               const pr = context.payload.pull_request;
+              const baseBranch = pr.base.ref;
               const headBranch = pr.head.ref;
               const title = pr.title ?? "";
               const body = pr.body ?? "";
+
+              // Release PRs should not move roadmap tickets.
+              if (baseBranch === "main" && headBranch === "develop") {
+                core.info("Skipping develop -> main release PR.");
+                return;
+              }
 
               // Prefer ticket number from branch pattern: "11-some-title".
               let issueNumber = null;
