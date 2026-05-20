@@ -3,6 +3,7 @@ import { z } from "zod";
 import { HttpError } from "../utils/http-error.js";
 import { env } from "../config/env.js";
 import { verifyPassword } from "../utils/password.js";
+import { createAuthTokenPayload } from "../utils/jwt.js";
 
 const loginBodySchema = z.object({
   email: z.string().email(),
@@ -45,14 +46,17 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       throw new HttpError(403, "TENANT_INACTIVE", "Tenant account is not active");
     }
 
-    const token = app.jwt.sign({
-      id: user.id,
-      tenantId: user.tenantId,
-      email: user.email,
-      role: user.role
-    }, {
-      expiresIn: env.JWT_EXPIRES_IN
-    });
+    const token = app.jwt.sign(
+      createAuthTokenPayload({
+        id: user.id,
+        tenantId: user.tenantId,
+        email: user.email,
+        role: user.role
+      }),
+      {
+        expiresIn: env.JWT_EXPIRES_IN
+      }
+    );
 
     return {
       accessToken: token,

@@ -10,6 +10,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16),
   JWT_EXPIRES_IN: z.string().default("1h"),
+  JWT_ISSUER: z.string().min(1).default("huepfburgen-saas-api"),
+  JWT_AUDIENCE: z.string().min(1).default("huepfburgen-saas-client"),
   CORS_ORIGIN: z.string().default("http://localhost:5173"),
   REDIS_URL: z.string().default("redis://localhost:6379")
 });
