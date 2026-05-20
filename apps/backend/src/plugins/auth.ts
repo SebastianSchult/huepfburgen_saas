@@ -1,24 +1,8 @@
 import fp from "fastify-plugin";
 import fastifyJwt from "@fastify/jwt";
-import type { FastifyReply } from "fastify";
 import { env } from "../config/env.js";
 import { parseAuthTokenPayload } from "../utils/jwt.js";
 import { HttpError } from "../utils/http-error.js";
-
-const sendAuthError = (
-  reply: FastifyReply,
-  statusCode: number,
-  code: string,
-  message: string
-) => {
-  reply.code(statusCode).send({
-    error: {
-      code,
-      message,
-      details: []
-    }
-  });
-};
 
 const authPlugin = fp(async (app) => {
   await app.register(fastifyJwt, {
@@ -37,20 +21,21 @@ const authPlugin = fp(async (app) => {
   app.decorateRequest("authUser", null);
   app.decorateRequest("requestContext", null);
 
-  app.decorate("authenticate", async (request, reply) => {
-    let tokenUser;
+  app.decorate("authenticate", async (request, _reply) => {
+    let tokenPayload;
 
     try {
-      const payload = await request.jwtVerify();
-      tokenUser = parseAuthTokenPayload(payload);
+      tokenPayload = parseAuthTokenPayload(await request.jwtVerify());
     } catch {
-      sendAuthError(reply, 401, "UNAUTHORIZED", "Authentication required");
-      return;
+      throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
     }
 
-    const dbUser = await app.prisma.user.findUnique({
+    const user = await app.prisma.user.findUnique({
       where: {
-        id: tokenUser.id
+        tenantId_id: {
+          tenantId: tokenPayload.tenantId,
+          id: tokenPayload.id
+        }
       },
       select: {
         id: true,
@@ -70,32 +55,29 @@ const authPlugin = fp(async (app) => {
       }
     });
 
-    if (!dbUser || dbUser.tenantId !== tokenUser.tenantId) {
-      sendAuthError(reply, 401, "UNAUTHORIZED", "Authentication required");
-      return;
+    if (!user) {
+      throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
     }
 
-    if (dbUser.status !== "active") {
-      sendAuthError(reply, 403, "USER_DISABLED", "User account is not active");
-      return;
+    if (user.status !== "active") {
+      throw new HttpError(403, "USER_DISABLED", "User account is not active");
     }
 
-    if (dbUser.tenant.status !== "active") {
-      sendAuthError(reply, 403, "TENANT_INACTIVE", "Tenant account is not active");
-      return;
+    if (user.tenant.status !== "active") {
+      throw new HttpError(403, "TENANT_INACTIVE", "Tenant account is not active");
     }
 
     const authUser = {
-      id: dbUser.id,
-      tenantId: dbUser.tenantId,
-      email: dbUser.email,
-      role: dbUser.role
+      id: user.id,
+      tenantId: user.tenantId,
+      email: user.email,
+      role: user.role
     };
 
     request.authUser = authUser;
     request.requestContext = {
       user: authUser,
-      tenant: dbUser.tenant
+      tenant: user.tenant
     };
   });
 
