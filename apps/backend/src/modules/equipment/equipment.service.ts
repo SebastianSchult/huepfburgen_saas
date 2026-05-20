@@ -1,11 +1,14 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import {
   equipmentListResponseSchema,
   type EquipmentListQuery,
   type EquipmentListResponse
 } from "./equipment.schemas.js";
 
-const createEquipmentWhereInput = (tenantId: string, query: EquipmentListQuery): Prisma.EquipmentWhereInput => {
+type EquipmentFindManyArgs = Parameters<PrismaClient["equipment"]["findMany"]>[0];
+type EquipmentWhereInput = NonNullable<EquipmentFindManyArgs>["where"];
+
+const createEquipmentWhereInput = (tenantId: string, query: EquipmentListQuery): EquipmentWhereInput => {
   const search = query.search?.trim();
 
   return {
