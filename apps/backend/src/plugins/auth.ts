@@ -3,6 +3,7 @@ import fastifyJwt from "@fastify/jwt";
 import { env } from "../config/env.js";
 import { parseAuthTokenPayload } from "../utils/jwt.js";
 import { HttpError } from "../utils/http-error.js";
+import { assertAnyRole, assertMinimumRole } from "../utils/authorization.js";
 
 const authPlugin = fp(async (app) => {
   await app.register(fastifyJwt, {
@@ -87,6 +88,18 @@ const authPlugin = fp(async (app) => {
     }
 
     return request.requestContext;
+  });
+
+  app.decorate("authorizeRoles", (request, allowedRoles) => {
+    const context = app.requireRequestContext(request);
+    assertAnyRole(context.user.role, allowedRoles);
+    return context;
+  });
+
+  app.decorate("authorizeMinimumRole", (request, minimumRole) => {
+    const context = app.requireRequestContext(request);
+    assertMinimumRole(context.user.role, minimumRole);
+    return context;
   });
 });
 
