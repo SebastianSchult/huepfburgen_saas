@@ -1,5 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { HttpError } from "../utils/http-error.js";
 
@@ -27,6 +26,14 @@ const updateTenantBodySchema = z
   });
 
 const tenantWriteRoles = ["owner", "admin"] as const;
+
+const isPrismaUniqueConstraintError = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+
+  return error.code === "P2002";
+};
 
 const tenantRoutes: FastifyPluginAsync = async (app) => {
   app.get("/tenant", { preHandler: app.authenticate }, async (request) => {
@@ -61,8 +68,8 @@ const tenantRoutes: FastifyPluginAsync = async (app) => {
       });
 
       return tenantResponseSchema.parse(tenant);
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    } catch (error: unknown) {
+      if (isPrismaUniqueConstraintError(error)) {
         throw new HttpError(409, "TENANT_SLUG_ALREADY_EXISTS", "Tenant slug already exists");
       }
 
