@@ -26,6 +26,7 @@ This file consolidates the architecture constraints from `architecture/docs/*.md
 - Support access should use time-boxed support sessions (impersonation), not hidden permanent admin access.
 - All support sessions require a `reason` and are audit logged.
 - Backend role authorization should use shared helpers (`authorizeRoles`, `authorizeMinimumRole`) instead of ad-hoc checks in routes.
+- Route handlers should enforce tenant scope with explicit checks (`authorizeTenant`) before tenant-bound reads or writes.
 
 ## Internationalization rules
 

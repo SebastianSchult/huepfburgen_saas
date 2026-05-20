@@ -43,3 +43,14 @@ export const assertMinimumRole = (role: UserRole, minimumRole: UserRole): void =
 
   throw new HttpError(403, "FORBIDDEN", "Insufficient permissions");
 };
+
+export const assertSameTenant = (
+  authenticatedTenantId: string,
+  requestedTenantId: string
+): void => {
+  if (authenticatedTenantId === requestedTenantId) {
+    return;
+  }
+
+  throw new HttpError(403, "TENANT_SCOPE_VIOLATION", "Cross-tenant access is not allowed");
+};
