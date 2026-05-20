@@ -25,6 +25,7 @@ declare module "fastify" {
     requireRequestContext: (request: FastifyRequest) => TenantRequestContext;
     authorizeRoles: (request: FastifyRequest, allowedRoles: readonly UserRole[]) => TenantRequestContext;
     authorizeMinimumRole: (request: FastifyRequest, minimumRole: UserRole) => TenantRequestContext;
+    authorizeTenant: (request: FastifyRequest, tenantId: string) => TenantRequestContext;
     verifyDatabaseConnection: () => Promise<void>;
   }
 }
